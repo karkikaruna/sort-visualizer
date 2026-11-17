@@ -34,16 +34,16 @@ TEXT = "#e5e7f0"
 MUTED = "#8b93b0"
 CAPTION_BG = "#1b2550"
 
-C_PIVOT = "#ef4444"    
-C_SCAN = "#fde047"      
-C_BOUNDARY = "#fb923c"  
-C_SWAP = "#22d3ee"      
-C_WAVE = "#f0fdfa"     
-C_SPARK = "#6ee7b7"    
-C_LEFT = "#34d399"      
-C_RIGHT = "#d946ef"    
-C_RUN = "#60a5fa"       
-C_NO = "#f472b6"       
+C_PIVOT = "#ef4444"
+C_SCAN = "#fde047"
+C_BOUNDARY = "#fb923c"
+C_SWAP = "#22d3ee"
+C_WAVE = "#f0fdfa"
+C_SPARK = "#6ee7b7"
+C_LEFT = "#34d399"
+C_RIGHT = "#d946ef"
+C_RUN = "#60a5fa"
+C_NO = "#f472b6"
 CONFETTI = ["#f472b6", "#a78bfa", "#38bdf8", "#34d399", "#fde047", "#fb923c"]
 
 CMAP_ACTIVE = LinearSegmentedColormap.from_list(
@@ -53,20 +53,20 @@ CMAP_SORTED = LinearSegmentedColormap.from_list(
 
 BAR_W = 0.78
 GLOW_W = 1.12
-HOP_HI = 0.10      
-HOP_LO = 0.03     
+HOP_HI = 0.10
+HOP_LO = 0.03
 
 FIG_W, FIG_H, FIG_H_AUX = 11, 6.6, 9.0
 AX_L, AX_R, AX_T, AX_B = 0.03, 0.97, 0.86, 0.09
 
 
-BASE_MS = 260      
-TWEEN_MS = 75      
-FX_STEPS, FX_MS = 7, 60        
-CONF_STEPS, CONF_MS = 26, 40   
+BASE_MS = 260
+TWEEN_MS = 75
+FX_STEPS, FX_MS = 7, 60
+CONF_STEPS, CONF_MS = 26, 40
 
-MAX_BARS = 60     
-AUXS = 0.40        
+MAX_BARS = 60
+AUXS = 0.40
 
 
 def mix(c1, c2, t):
@@ -91,13 +91,16 @@ def make_data(n, mode, seed):
     elif mode == "few-unique":
         choices = [max(1, n // 5), max(1, n // 2), n]
         data = [rng.choice(choices) for _ in range(n)]
+    elif mode == "mixed":
+        data = list(range(-(n // 2), n - n // 2))
+        rng.shuffle(data)
     else:
         raise ValueError(f"unknown mode: {mode}")
     return data
 
 
 def parse_numbers(text):
-    """Turn '5, 3 8; 1' into [5, 3, 8, 1]. Raises ValueError with a clear message."""
+    """Turn '5, -3 8; 1' into [5, -3, 8, 1]. Raises ValueError with a clear message."""
     tokens = [t for t in re.split(r"[,\s;]+", text.strip()) if t]
     nums = []
     for tok in tokens:
@@ -105,8 +108,6 @@ def parse_numbers(text):
             value = int(tok)
         except ValueError:
             raise ValueError(f"'{tok}' is not a whole number")
-        if value < 1:
-            raise ValueError(f"{value} is too small; use whole numbers of 1 or more")
         nums.append(value)
     if len(nums) < 2:
         raise ValueError("enter at least 2 numbers")
@@ -116,9 +117,8 @@ def parse_numbers(text):
 
 
 def ask_user_numbers():
-  
     print("Enter the numbers to sort, separated by spaces or commas.")
-    print(f"Example: 42 7 19 3 88 25   ({MAX_BARS} numbers max, each 1 or more)")
+    print(f"Example: 42 -7 19 3 -88 25 0   ({MAX_BARS} numbers max, negatives allowed)")
     print("Press Enter with nothing typed to use random numbers instead.")
     while True:
         try:
@@ -150,20 +150,16 @@ def ask_user_algo():
         print("  Not a valid choice. Try again.")
 
 
-
 def mk(idx, color, label, row, top=False):
-    
     return (idx, color, label, row, top)
 
 
 def cmp_info(a, b, op, nop, yes, yes_txt, no_txt, space="main"):
-    
     return {"a": a, "b": b, "op": op, "nop": nop, "yes": yes,
             "yes_txt": yes_txt, "no_txt": no_txt, "space": space}
 
 
 class Recorder:
-
 
     def __init__(self, data):
         self.a = list(data)
@@ -353,20 +349,26 @@ def record_merge(data):
                        tint=written(), focus=p,
                        cmp=cmp_info(p, q, "<=", ">", yes, "take from the left half",
                                     "take from the right half", space="aux"))
-                take = p if yes else q
+                from_left = yes
                 why = ("smaller or equal, from the left half" if yes
                        else "smaller, from the right half")
             elif p <= mid:
-                take, why = p, "the right half is empty, copy the rest"
+                from_left = True
+                why = "the right half is empty, copy the rest"
             else:
-                take, why = q, "the left half is empty, copy the rest"
+                from_left = False
+                why = "the left half is empty, copy the rest"
+
+            # Track the side explicitly: once the left half is exhausted, p can
+            # equal q, so comparing indices would advance the wrong pointer.
+            take = p if from_left else q
             val = aux.pop(take)
             a[k] = val
             r.moves += 1
             hidden.discard(k)
             if top:
                 r.sorted.add(k)
-            if take == p:
+            if from_left:
                 p += 1
             else:
                 q += 1
@@ -484,6 +486,7 @@ def record_quick(data, pivot_strategy="last"):
     quicksort(0, n - 1)
     return r.finish()
 
+
 GRASS, DIRT, STONE = "#5fa332", "#8a5a36", "#868686"
 EMERALD, MOSS = "#21c25a", "#56795a"
 WAITING = mix(to_rgb(GRASS), to_rgb(PANEL), 0.7)
@@ -522,7 +525,6 @@ ALGOS = {
                 (C_LEFT, "Checked: \u2264 pivot"), (C_RIGHT, "Checked: > pivot"),
                 (EMERALD, "Final position")]),
 }
-
 
 
 def expand_states(frames, tween_steps):
@@ -675,9 +677,16 @@ def _add(buf, t, sig):
     buf[i:j] += sig[: j - i]
 
 
+def value_scale(values):
+    """Return (base, span) so that (v - base) / span lies in 0..1 for every value."""
+    base = min(0, min(values))
+    span = max(values) - base
+    return base, (span if span > 0 else 1)
+
+
 def synth_audio(frames, states):
     """Build the whole sound track (int16 mono) from the timed states."""
-    maxv = max(frames[0]["arr"])
+    vbase, vspan = value_scale(frames[0]["arr"])
     total = states[-1]["t0"] + states[-1]["dur_s"] + 2.0
     buf = np.zeros(int(total * SR) + SR)
     rng = np.random.default_rng(3)
@@ -692,7 +701,7 @@ def synth_audio(frames, states):
             confetti.setdefault(fi, si)
 
     def nf(value):
-        return note_freq(value / maxv)
+        return note_freq((value - vbase) / vspan)
 
     _add(buf, 0.0, glide(220, 880, dur=0.35, vol=0.10))            # start-up swoosh
 
@@ -760,7 +769,6 @@ def write_wav(path, samples):
 
 
 class AudioPlayer:
-  
 
     def __init__(self, samples):
         self.samples = samples
@@ -873,13 +881,11 @@ def confetti_particles(p, xmin, xmax, ytop, ybot, count=130, seed=11):
     return np.column_stack([xs, ys]), sizes, rgba
 
 
-
-def bar_colors(frame, n, maxv):
-    
+def bar_colors(frame, n, vbase, vspan):
     colors = []
     lo, hi = frame["lo"], frame["hi"]
     for k in range(n):
-        frac = frame["arr"][k] / maxv
+        frac = (frame["arr"][k] - vbase) / vspan
         if k in frame["sorted"]:
             c = CMAP_SORTED(frac)[:3]
         elif lo is not None and not (lo <= k <= hi):
@@ -912,8 +918,7 @@ def bar_colors(frame, n, maxv):
     return colors, glow
 
 
-
-TEX = 8                    
+TEX = 8
 
 
 def _make_tiles():
@@ -965,16 +970,19 @@ TILES = _make_tiles()
 
 def build_scene(data, frames, states, subtitle, spec):
     n = len(data)
-    maxv = max(data)
+    data_lo, data_hi = min(data), max(data)
+    height_off = 1 - data_lo if data_lo < 1 else 0
+    maxv = data_hi + height_off
+    vbase, vspan = value_scale(data)
     has_aux = spec["aux"]
     fig_h = FIG_H_AUX if has_aux else FIG_H
 
     ROWS = int(min(32, max(8, maxv)))
     block_h = maxv / ROWS
-    stone_rows = max(2, ROWS // 2)          
+    stone_rows = max(2, ROWS // 2)
 
     def rows_for(v):
-        return max(1, int(round(v * ROWS / maxv)))
+        return max(1, int(round((v + height_off) * ROWS / maxv)))
 
     tex_cache = {}
 
@@ -983,7 +991,7 @@ def build_scene(data, frames, states, subtitle, spec):
         if key not in tex_cache:
             tiles = []
             for r in range(rows):
-                b = rows - 1 - r            
+                b = rows - 1 - r
                 if theme == "sorted":
                     kind = "emerald" if r == 0 else "moss"
                 elif r == 0:
@@ -1001,7 +1009,7 @@ def build_scene(data, frames, states, subtitle, spec):
     aux_base = -1.10 * maxv
     y_top = 1.55 * maxv
     y_bot = (aux_base - 0.28 * maxv) if has_aux else -0.32 * maxv
-    pad_x = max(0, 14 - n) / 2              
+    pad_x = max(0, 14 - n) / 2
     x_min, x_max = -0.9 - pad_x, n - 0.1 + pad_x
 
     fig, ax = plt.subplots(figsize=(FIG_W, fig_h))
@@ -1012,11 +1020,9 @@ def build_scene(data, frames, states, subtitle, spec):
     for spine in ax.spines.values():
         spine.set_visible(False)
 
-    
     ux = (x_max - x_min) / (FIG_W * (AX_R - AX_L))
     uy = (y_top - y_bot) / (fig_h * (AX_T - AX_B))
 
-  
     sky = np.array([mix(to_rgb("#0f1a47"), to_rgb("#5b86d6"), t)
                     for t in np.linspace(0, 1, 96)])[:, None, :]
     ax.imshow(sky, extent=(x_min, x_max, y_bot, y_top), origin="upper",
@@ -1026,7 +1032,13 @@ def build_scene(data, frames, states, subtitle, spec):
     for frac in (0.25, 0.5, 0.75, 1.0):
         ax.axhline(frac * maxv, color="white", alpha=0.07, lw=0.8, zorder=0.3)
 
-   
+    if data_lo <= 0:
+        zero_y = rows_for(0) * block_h
+        ax.axhline(zero_y, color="white", alpha=0.5, lw=1.3, ls=(0, (4, 3)),
+                   zorder=0.35)
+        ax.text(x_min + 0.08, zero_y + 0.012 * maxv, "0", color=TEXT, fontsize=9,
+                fontweight="bold", ha="left", va="bottom", zorder=0.9)
+
     if has_aux:
         panel_top = -0.42 * maxv
         ax.add_patch(Rectangle((x_min, y_bot), x_max - x_min, panel_top - y_bot,
@@ -1038,7 +1050,6 @@ def build_scene(data, frames, states, subtitle, spec):
                 color=MUTED, fontsize=9.5, fontweight="bold", ha="left", va="top",
                 zorder=0.9)
 
-  
     crng = np.random.default_rng(5)
     cloud_n = 6
     cloud_x0 = crng.uniform(x_min, x_max, cloud_n)
@@ -1056,21 +1067,17 @@ def build_scene(data, frames, states, subtitle, spec):
         clouds.append((base, top, w))
     cloud_span = (x_max - x_min) + 6
 
-   
     band = Rectangle((0, y_bot), 1, y_top - y_bot, color="white",
                      alpha=0.10, zorder=0.5, linewidth=0)
     ax.add_patch(band)
 
-    
     pline, = ax.plot([], [], color=C_PIVOT, lw=1.6, ls=(0, (5, 4)),
                      alpha=0.95, zorder=1.5)
 
-   
     by = -0.285 * maxv
     bracket, = ax.plot([], [], color="#a5b4fc", lw=3, solid_capstyle="round",
                        zorder=1.5)
 
-   
     def make_pointer():
         stem, = ax.plot([], [], lw=2.2, zorder=5.9, solid_capstyle="butt")
         m, = ax.plot([], [], marker="^", ls="", ms=15, mec="black", mew=1.2,
@@ -1152,9 +1159,10 @@ def build_scene(data, frames, states, subtitle, spec):
         cranes.append((rope, trolley, head, prong_l, prong_r))
 
     # Halos, block towers (one image per column) and a tint overlay
-    halo_outer = ax.bar(range(n), data, width=GLOW_W + 0.22, color="white",
+    heights0 = [v + height_off for v in data]
+    halo_outer = ax.bar(range(n), heights0, width=GLOW_W + 0.22, color="white",
                         alpha=0.0, linewidth=0, zorder=1.8)
-    halo_inner = ax.bar(range(n), data, width=GLOW_W - 0.04, color="white",
+    halo_inner = ax.bar(range(n), heights0, width=GLOW_W - 0.04, color="white",
                         alpha=0.0, linewidth=0, zorder=2)
     imgs = []
     for k in range(n):
@@ -1163,7 +1171,7 @@ def build_scene(data, frames, states, subtitle, spec):
                               extent=(k - BAR_W / 2, k + BAR_W / 2, 0, r0 * block_h),
                               origin="upper", interpolation="nearest",
                               aspect="auto", zorder=3))
-    bars = ax.bar(range(n), data, width=BAR_W, color=to_rgb(C_PIVOT),
+    bars = ax.bar(range(n), heights0, width=BAR_W, color=to_rgb(C_PIVOT),
                   edgecolor="none", linewidth=0, zorder=3.2)
     for rect in bars:
         rect.set_facecolor((*to_rgb(C_PIVOT), 0.0))
@@ -1191,7 +1199,6 @@ def build_scene(data, frames, states, subtitle, spec):
                           aspect="auto", zorder=5)
         flyer.set_visible(False)
 
-   
     ax.set_xlim(x_min, x_max)
     ax.set_ylim(y_bot, y_top)
     ax.set_autoscale_on(False)
@@ -1226,7 +1233,6 @@ def build_scene(data, frames, states, subtitle, spec):
                       bbox=dict(boxstyle="round,pad=0.45", fc=CAPTION_BG,
                                 ec="none", alpha=0.95))
 
- 
     progress = Rectangle((0, 0.988), 0, 0.012, transform=ax.transAxes,
                          color="#8b5cf6", zorder=9, linewidth=0)
     ax.add_patch(progress)
@@ -1253,7 +1259,7 @@ def build_scene(data, frames, states, subtitle, spec):
         sorted_set = f["sorted"]
         pos = [float(k) for k in range(n)]
         lift = [0.0] * n
-        colors, glow = bar_colors(f, n, maxv)
+        colors, glow = bar_colors(f, n, vbase, vspan)
         moving = set()
         tint = f["tint"]
         hidden = set(f["hidden"])
@@ -1357,7 +1363,6 @@ def build_scene(data, frames, states, subtitle, spec):
                 labels[k].set_position((pos[k], y0 + h + 0.006 * maxv + bump))
                 labels[k].set_text(str(arr[k]))
 
-      
         holds = sorted(moving)
         for idx, (rope, trolley, head, prong_l, prong_r) in enumerate(cranes):
             if idx < len(holds):
@@ -1374,7 +1379,6 @@ def build_scene(data, frames, states, subtitle, spec):
                 for artist in (rope, trolley, head, prong_l, prong_r):
                     artist.set_visible(False)
 
-       
         atops = {}
         aux = f["aux"] or {}
         if has_aux:
@@ -1420,7 +1424,6 @@ def build_scene(data, frames, states, subtitle, spec):
             else:
                 flyer.set_visible(False)
 
-   
         msg = f["msg"]
         cm = f["cmp"]
         if cm and f["kind"] == "compare":
@@ -1474,7 +1477,6 @@ def build_scene(data, frames, states, subtitle, spec):
         else:
             pline.set_data([], [])
 
-      
         show_ptrs = f["wave"] is None and f["kind"] != "final"
         items = [(m[0], m[1], m[2], m[3]) for m in f["marks"]] if show_ptrs else []
         draw_ptrs(pointers, items, ptr_y, row_y)
@@ -1482,7 +1484,6 @@ def build_scene(data, frames, states, subtitle, spec):
             aitems = [(m[0], m[1], m[2], 0) for m in f["amarks"]] if show_ptrs else []
             draw_ptrs(apointers, aitems, aptr_y, arow_y)
 
-        
         fx = st["fx"]
         if fx and "bursts" in fx and fx["bursts"]:
             parts_ = [burst_particles(bx, by_, p, seed, col, ux, uy)
@@ -1504,7 +1505,6 @@ def build_scene(data, frames, states, subtitle, spec):
             confetti.set_offsets(no_pts)
             confetti.set_visible(False)
 
-  
         for ci, (base_, top_, w) in enumerate(clouds):
             cx = (cloud_x0[ci] + t * cloud_v[ci] - x_min + 3) % cloud_span + x_min - 3
             base_.set_x(cx)
@@ -1516,9 +1516,8 @@ def build_scene(data, frames, states, subtitle, spec):
     return fig, update
 
 
-
 def play_live(fig, update, states, total_s, player):
-    
+
     starts = [st["t0"] for st in states]
     clock = {"t0": None, "paused": False, "pause_t": 0.0, "si": -1, "drawn": -1.0}
 
@@ -1627,7 +1626,6 @@ def save_mp4(fig, update, states, total_s, wav_path, out, fps, dpi):
         sys.exit("ffmpeg failed while writing the video.")
 
 
-
 def main():
     ap = argparse.ArgumentParser(
         description="Animated sorting visualizer with sound: bubble, insertion, "
@@ -1635,12 +1633,12 @@ def main():
     ap.add_argument("--algo", choices=list(ALGOS),
                     help="which algorithm to show (asked in the terminal if omitted)")
     ap.add_argument("--numbers", metavar="LIST",
-                    help='numbers to sort, e.g. "5 3 8 1" (skips the numbers prompt)')
+                    help='numbers to sort, e.g. "5 -3 8 1" (skips the numbers prompt)')
     ap.add_argument("--size", type=int, default=25,
                     help="number of bars for random data (default 25)")
     ap.add_argument("--mode", default="random",
-                    choices=["random", "sorted", "reversed", "few-unique"],
-                    help="random-data pattern (default random)")
+                    choices=["random", "sorted", "reversed", "few-unique", "mixed"],
+                    help="random-data pattern; mixed includes negatives (default random)")
     ap.add_argument("--pivot", default="last", choices=["last", "random", "median"],
                     help="pivot strategy, quick sort only (default last)")
     ap.add_argument("--speed", type=float, default=1.0,
