@@ -818,7 +818,7 @@ class AudioPlayer:
             }[self.backend]
             self.proc = subprocess.Popen(args, stdout=subprocess.DEVNULL,
                                          stderr=subprocess.DEVNULL)
-        except Exception as exc:  # audio must never crash the animation
+        except Exception as exc:  
             print(f"(audio playback failed: {exc})")
             self.backend = None
 
@@ -843,9 +843,7 @@ class AudioPlayer:
             pass
 
 
-# --------------------------------------------------------------------------
-# Particles
-# --------------------------------------------------------------------------
+
 def burst_particles(x, y, p, seed, color, ux, uy, count=16, radius_in=0.8):
     """Sparkles flying outward from (x, y). p goes 0 -> 1 over the burst."""
     rng = np.random.default_rng(seed)
@@ -930,9 +928,9 @@ def _make_tiles():
 
     def shade(t):
         t = t.copy()
-        t[-1, :] *= 0.70                                  # dark bottom edge
-        t[:, -1] *= 0.82                                  # dark right edge
-        t[0, :] = np.minimum(1.0, t[0, :] * 1.10)         # light top edge
+        t[-1, :] *= 0.70                                 
+        t[:, -1] *= 0.82                                  
+        t[0, :] = np.minimum(1.0, t[0, :] * 1.10)       
         return t
 
     tiles = {"dirt": [], "stone": [], "grass_side": [], "emerald": [], "moss": []}
@@ -940,12 +938,12 @@ def _make_tiles():
         tiles["dirt"].append(shade(noisy(DIRT, 0.06)))
 
         st = noisy(STONE, 0.05)
-        for _p in range(3):                               # darker pebbles
+        for _p in range(3):                              
             r, c = rng.integers(0, TEX, 2)
             st[r, c] *= 0.72
         tiles["stone"].append(shade(st))
 
-        g = noisy(DIRT, 0.06)                             # dirt with a grass fringe
+        g = noisy(DIRT, 0.06)                             
         green = noisy(GRASS, 0.07)
         for c in range(TEX):
             d = int(rng.integers(2, 4))
@@ -1115,7 +1113,7 @@ def build_scene(data, frames, states, subtitle, spec):
                 tx.set_text("")
                 tx.get_bbox_patch().set_visible(False)
 
-    # Comparison connector
+    
     cmp_line, = ax.plot([], [], color=C_SCAN, lw=2.8, zorder=5.9,
                         solid_capstyle="round", solid_joinstyle="round")
     cmp_end_a, = ax.plot([], [], marker="v", ls="", ms=12, color=C_SCAN,
@@ -1130,7 +1128,7 @@ def build_scene(data, frames, states, subtitle, spec):
     for art in cmp_artists:
         art.set_visible(False)
 
-    # Crane rail across the top, with two trolleys that ride along it
+    
     rail_y = 1.23 * maxv
     ax.plot([x_min, x_max], [rail_y, rail_y], color="#4b5563", lw=6,
             solid_capstyle="butt", zorder=1.2)
@@ -1158,7 +1156,7 @@ def build_scene(data, frames, states, subtitle, spec):
         rope.set_visible(False)
         cranes.append((rope, trolley, head, prong_l, prong_r))
 
-    # Halos, block towers (one image per column) and a tint overlay
+    
     heights0 = [v + height_off for v in data]
     halo_outer = ax.bar(range(n), heights0, width=GLOW_W + 0.22, color="white",
                         alpha=0.0, linewidth=0, zorder=1.8)
@@ -1176,7 +1174,7 @@ def build_scene(data, frames, states, subtitle, spec):
     for rect in bars:
         rect.set_facecolor((*to_rgb(C_PIVOT), 0.0))
 
-    # Helper-buffer towers and the "flyer" that hops from buffer to slot
+   
     aimgs, abars, flyer = [], [], None
     if has_aux:
         for k in range(n):
